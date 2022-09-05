@@ -1,0 +1,48 @@
+<!DOCTYPE html> 
+
+<html>   
+
+ <head>  
+  
+  <title>  Formulário de cadastro </title>
+
+  <meta charset="utf-8" /> 
+
+ </head>
+
+<body> 
+
+<form 
+
+   
+ 
+    name= "cadastro">
+    <input type="text" id="nomeId" placeholder="Kaike Lucena" required="required" name="nome" />
+    <label for="nome"> nome </label>
+    
+
+
+    <input type="text" id="celular" placeholder="(xx) xxxxx-xxxx"  name="celular" />
+    <label for="celular"> celular </label> 
+
+
+    <input type="text" id="e-mail" placeholder="xxxxx@gmail.com" name="e-mail" />
+    <label for="e-mail"> e-mail </label>
+
+
+    <input type="text" id="endereço" placeholder="rua Fulano de tal" name="endereço" />
+    <label for="endereço"> endereço</label>
+
+    <input type="text" id="cidade" placeholder="xxxxx" name="cidade" />
+    <label for="cidade"> cidade</label>
+
+
+</form> 
+
+
+</body>
+ 
+
+
+
+</html>
