@@ -1,0 +1,143 @@
+import os
+import os.path
+import time
+import shutil
+import glob
+import datetime
+import pandas as pd
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+from google.oauth2.credentials import Credentials
+from googleapiclient.http import MediaFileUpload
+from google.auth.transport.requests import Request
+from google_auth_oauthlib.flow import InstalledAppFlow
+
+chromedriver_path = "C:\\Users\\Ritmo\Documents\\chromedriver-win64\\chromedriver.exe"
+
+navegador = webdriver.Chrome(executable_path=chromedriver_path)
+#navegador = webdriver.Chrome()
+
+navegador.get("https://app.pipefy.com/pipes/302515964/reports_v2/300355484")
+
+time.sleep(7)
+
+campo_email = navegador.find_element(By.NAME, "username").send_keys("---")
+time.sleep(2)
+
+campo_email = navegador.find_element(By.NAME, "password").send_keys("---")
+time.sleep(2) 
+
+campo_email = navegador.find_element(By.NAME, "submit").click()
+time.sleep(20)
+
+#time deve ser 15 para que dê tempo de clicar no botão 
+campo_email = navegador.find_element("xpath", "//button[@aria-label='Exportar Relatório']").click()
+time.sleep(20)
+
+campo_email = navegador.find_element("xpath", "//*[@title='Download']").click()
+time.sleep(40)
+
+# Encontra o arquivo mais recente na pasta Downloads
+download_path = os.path.join(os.path.expanduser("~"), "Downloads")
+latest_file = max(glob.glob(download_path + "/*.xlsx"), key=os.path.getctime)
+
+# Define o caminho para a pasta Planilha Ritmo
+destination_folder = os.path.join(os.path.expanduser("~"), "Documents", "Codigos", "Planilhas Ritmo")
+
+# Move o arquivo para a pasta Planilha Ritmo
+shutil.move(latest_file, destination_folder)
+
+SCOPES = ['https://www.googleapis.com/auth/drive']
+creds = None
+
+if os.path.exists("token.json"):
+    creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+
+if not creds or not creds.valid:
+    if creds and creds.expired and creds.refresh_token:
+        creds.refresh(Request())
+
+    else:
+        flow = InstalledAppFlow.from_client_secrets_file(
+            "credentials.json", SCOPES)
+        creds = flow.run_local_server(port=0)
+
+    with open('token.json', 'w') as token:
+        token.write(creds.to_json())
+
+try:
+    service = build("drive", "v3", credentials=creds)
+
+    # Search for the destination folder by ID
+    folder_id = '1r8oq0pa9Ov468boEbmIhg8QWIWuuM8J3'
+    
+
+    # Search for files in the local folder
+    folder_path = 'C:/Users/Ritmo/Documents/Codigos/Planilhas Ritmo'
+    for file_name in os.listdir(folder_path):
+        file_path = os.path.join(folder_path, file_name)
+
+        if os.path.isfile(file_path):
+            # Renomeia o arquivo para 8.xlsx
+            new_file_name = '8.xlsx'
+            new_file_path = os.path.join(folder_path, new_file_name)
+            os.rename(file_path, new_file_path)
+            
+            # Verifica se já existe uma planilha com o mesmo nome no Google Drive
+            existing_file = None
+            page_token = None
+            while True:
+                response = service.files().list(
+                    q=f"name='{new_file_name}' and parents in '{folder_id}' and trashed=false",
+                    spaces='drive',
+                    fields='nextPageToken, files(id, name)',
+                    pageToken=page_token
+                ).execute()
+                
+                for file in response.get('files', []):
+                    existing_file = file
+                    break
+
+                page_token = response.get('nextPageToken', None)
+                if page_token is None:
+                    break
+            
+            if existing_file:
+                # Substitui o arquivo existente
+                file_metadata = {'name': new_file_name}
+                media = MediaFileUpload(new_file_path)
+                update_file = service.files().update(
+                    fileId=existing_file['id'],
+                    body=file_metadata,
+                    media_body=media,
+                    fields='id'
+                ).execute()
+
+                print(f'Arquivo substituído no Google Drive: {new_file_name}')
+            else:
+                # Upload do arquivo renomeado para a pasta de destino
+                file_metadata = {'name': new_file_name, 'parents': [folder_id]}
+                media = MediaFileUpload(new_file_path)
+                upload_file = service.files().create(
+                    body=file_metadata,
+                    media_body=media,
+                    fields='id',
+                    supportsAllDrives=True
+                ).execute()
+
+                print(f'Arquivo enviado para o Google Drive: {new_file_name}')
+
+    navegador.get("https://docs.google.com/spreadsheets/d/1CfYzmQ4ZNE9Nc4MCCS2mWQdjj9y3MJGS/edit?usp=drive_link&ouid=105520486719758312574&rtpof=true&sd=true")            
+    time.sleep(20)
+
+except HttpError as e:
+    print(f'Ocorreu um erro: {e}')
+
+
+
